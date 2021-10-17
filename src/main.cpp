@@ -1,7 +1,7 @@
 #include <Arduino.h>
 
 #define K 0.003300
-#define CELLS 2
+#define CELLS 4
 #define MAX_CELLS 12
 #define TEM_Sen A7
 
@@ -20,8 +20,8 @@ double cell_const[MAX_CELLS] =
     {
         1.4598,
         1.8500,
-        1.3704,
-        1.65,
+        1.7200,
+        1.6650,
         4.7333,
         6.6000,
         6.6000,
@@ -34,6 +34,7 @@ double cell_const[MAX_CELLS] =
 //################## FUNCTION DECLARATIONS ####################
 void printData();
 void internalTemperature();
+void Alert(int a);
 
 void setup()
 {
@@ -61,12 +62,13 @@ void loop()
       cellVoltage *= cell_const[i];
       // Set current cell voltage to message.
       vCells[i] = (float)cellVoltage;
-      if (vCells[i] < 3.20)
+      if (vCells[i] < 3.30)
       {
         batState[i] = 0;
         lowBat = true;
+        Alert(i);
       }
-      else if (vCells[i] < 3.70)
+      else if (vCells[i] < 3.8)
       {
         batState[i] = 1;
       }
@@ -75,16 +77,9 @@ void loop()
         batState[i] = 2;
       }
     }
-    printData();
+    // printData(); //used for debug
     sysClock = millis(); //Reset SysClock
   }
-}
-
-void printData()
-{
-  Serial.print("Drive Bat Temp = " + String(intTemp) + " --");
-  Serial.print("Cell_0 = " + String(vCells[0]) + " State = " + String(batState[0]));
-  Serial.println("--Cell_ = " + String(vCells[1]) + " State = " + String(batState[1]));
 }
 
 void internalTemperature()
@@ -96,23 +91,54 @@ void internalTemperature()
   intTemp = int(temp);
 }
 
+void Alert(int a)
+{ //send alert msg
+  Serial.printf("Cell %d is LOW!!", a);
+  Serial.println("");
+  Serial1.printf("alert%d#", a);
+}
+
 void serialEvent1()
 { //Get Request for battery data
   Data_In = Serial1.readStringUntil('#');
-  if (Data_In == "dbat")
+  if (Data_In == "dbv")
   {
-    Serial1.print("dbat@");
+    Serial1.print("dbv@");
     Serial1.print(vCells[0]);
     Serial1.print("-");
     Serial1.print(vCells[1]);
-    Serial1.println("#");
+    Serial1.print(",");
+    Serial1.print(vCells[2]);
+    Serial1.print("_");
+    Serial1.print(vCells[3]);
+    Serial1.print("#");
     Data_In = "";
   }
-  else if (Data_In == "dtemp")
+  else if (Data_In == "dbs")
   {
-    Serial1.print("dtemp@");
-    Serial1.print(intTemp);
-    Serial1.println("#");
+    Serial1.print("dbs@");
+    Serial1.print(batState[0]);
+    Serial1.print("-");
+    Serial1.print(batState[1]);
+    Serial1.print(",");
+    Serial1.print(batState[2]);
+    Serial1.print("_");
+    Serial1.print(batState[3]);
+    Serial1.print("#");
     Data_In = "";
   }
+  else if (Data_In == "dbt")
+  {
+    Serial1.printf("dbt@%d#", intTemp);
+    Data_In = "";
+  }
+}
+
+void printData()
+{ // used for debug only
+  Serial.print("Drive Bat Temp = " + String(intTemp) + " --");
+  Serial.print("-Cell_0 = " + String(vCells[0]) + " State = " + String(batState[0]));
+  Serial.print("-Cell_1 = " + String(vCells[1]) + " State = " + String(batState[1]));
+  Serial.print("-Cell_2 = " + String(vCells[2]) + " State = " + String(batState[2]));
+  Serial.println("-Cell_3 = " + String(vCells[3]) + " State = " + String(batState[3]));
 }
